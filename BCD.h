@@ -27,10 +27,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-
+/*
+ * This digit includes a change register.  The change register is left
+ * - shifted on each update to the BCD (number).  The least
+ * significant bit of the change register is set to one when this
+ * digit changes value.
+ */
 typedef struct {
     /*
-     * Decimal digit value
+     * Digit value
      */
     unsigned char bin;
     /*
@@ -39,26 +44,65 @@ typedef struct {
     unsigned char changes;
 
 } BCDDigit;
-
+/*
+ * The digit list is an array having length integer plus fraction (sum
+ * total number of digits in memory).
+ * 
+ * The "list[integer]" element is the first element of the fraction
+ * part, which is "fraction" number of digit elements in length.
+ * 
+ * The "list[integer-1]" element is the least significant digit of the
+ * integer part, which is "integer" number of digit elements in
+ * length.  
+ * 
+ * The most significant digits of the integer part, and the least
+ * significant digits of the fraction part, may have value zero.
+ */
 typedef struct {
-
-    unsigned char length;
+    /*
+     * Number of digits allocated to integer part of BCD number
+     */
+    unsigned char integer;
+    /*
+     * Number of digits allocated to fraction part of BCD number
+     */
+    unsigned char fraction;
 
     BCDDigit* list;
 
 } BCD;
 
-#define BCDClear(bp)                            \
-    memset( (bp)->list,0,(bp)->length);
+#define BCDLength(bp) ((bp)->integer+(bp)->fraction)
 
-#define BCDOpen(bp,len)                         \
-    (bp)->length = len;                         \
-    (bp)->list = malloc(sizeof(BCDDigit)*len);  \
+#define BCDClear(bp)                            \
+    memset( (bp)->list,0,BCDLength(bp));
+
+#define BCDOpen(bp,ii,ff)                           \
+    (bp)->integer = ii;                             \
+    (bp)->fraction = ff;                            \
+    (bp)->list = malloc(sizeof(BCDDigit)*(ii+ff));  \
     BCDClear(bp);
 
 #define BCDClose(bp)                        \
     free((bp)->list);                       \
-    (bp)->length = 0;
+    (bp)->integer = 0;                      \
+    (bp)->fraction = 0;
+/*
+ * List index for least signficant integer digit
+ */
+#define BCDInteger(bp) (((bp)->integer)-1)
+/*
+ * Boolean test of index for integer digit
+ */
+#define BCDIntegerValid(bp,ix) ((0 <= (ix))&&((ix) <= BCDInteger(bp)))
+/*
+ * List index for most signficant fraction digit
+ */
+#define BCDFraction(bp) ((bp)->integer)
+/*
+ * Boolean test of index for fraction digit
+ */
+#define BCDFractionValid(bp,ix) ((BCDFraction(bp) <= (ix))&&((ix) <= BCDLength(bp)))
 
 #ifdef _BCD_C
 
@@ -72,7 +116,7 @@ extern const unsigned char BCD_LEN_WORD;
 extern const unsigned char BCD_LEN_LONG;
 #endif
 
-BCD* BCDCreate(unsigned char length);
+BCD* BCDCreate(unsigned char integer, unsigned char fraction);
 
 BCD* BCDCreateWord();
 

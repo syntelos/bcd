@@ -29,25 +29,25 @@
 
 /*
  */
-BCD* BCDCreate(unsigned char length){
+BCD* BCDCreate(unsigned char integer, unsigned char fraction){
     BCD* bcd = malloc(sizeof(BCD));
-    BCDOpen(bcd,length);
+    BCDOpen(bcd,integer,fraction);
     return bcd;
 }
 /*
  */
 BCD* BCDCreateWord(){
-    return BCDCreate(BCD_LEN_WORD);
+    return BCDCreate(BCD_LEN_WORD,0);
 }
 /*
  */
 BCD* BCDCreateLong(){
-    return BCDCreate(BCD_LEN_LONG);
+    return BCDCreate(BCD_LEN_LONG,0);
 }
 /*
  */
 void BCDDestroy(BCD* bcd){
-    if (bcd && bcd->length){
+    if (bcd && BCDLength(bcd)){
         BCDClose(bcd);
         free(bcd);
     }
@@ -55,14 +55,39 @@ void BCDDestroy(BCD* bcd){
 /*
  */
 unsigned int BCDCopy(BCD* dst, BCD* src){
-    if (src && dst && src->length <= dst->length){
+    if (src && dst && 
+        src->integer <= dst->integer && 
+        src->fraction <= dst->fraction)
+    {
         BCDClear(dst);
 
-        BCDDigit* sp = src->list;
-        const BCDDigit* sz = &(src->list[src->length-1]);
-        BCDDigit* dp = dst->list;
+        BCDDigit *sp, *dp;
+        unsigned int sx, dx;
 
-        for (; sp < sz; sp++, dp++){
+        /*
+         * Copy integer part
+         */
+        sx = BCDInteger(src);
+        dx = BCDInteger(dst);
+
+        for (; BCDIntegerValid(src,sx) && BCDIntegerValid(dst,dx); sx--, dx--){
+
+            sp = &(src->list[sx]);
+            dp = &(dst->list[dx]);
+
+            dp->bin = sp->bin;
+        }
+
+        /*
+         * Copy fraction part
+         */
+        sx = BCDFraction(src);
+        dx = BCDFraction(dst);
+
+        for (; BCDFractionValid(src,sx) && BCDFractionValid(dst,dx); sx++, dx++){
+
+            sp = &(src->list[sx]);
+            dp = &(dst->list[dx]);
 
             dp->bin = sp->bin;
         }

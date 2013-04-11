@@ -9,9 +9,9 @@
 
 int test_copy(){
 
-    BCD* src = BCDCreate(8);
+    BCD* src = BCDCreateWord();
 
-    BCD* dst = BCDCreate(8);
+    BCD* dst = BCDCreateWord();
 
     unsigned int rc = BCDCopy(dst,src);
 
