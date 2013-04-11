@@ -46,11 +46,54 @@ BCD* BCDCreate(unsigned char integer, unsigned char fraction){
 }
 /*
  */
+BCD* BCDCreateFrom(const BCD* src){
+    if (src && BCDLength(src)){
+
+        return BCDCreate(src->integer,src->fraction);
+    }
+    else
+        return NULL;
+}
+/*
+ */
 void BCDDestroy(BCD* bcd){
     if (bcd && BCDLength(bcd)){
         BCDClose(bcd);
         free(bcd);
     }
+}
+/*
+ */
+bool BCDIsOpen(const BCD* src){
+    return (src && BCDLength(src));
+}
+/*
+ */
+bool BCDIsClosed(const BCD* src){
+    return (NULL == src || 0 == BCDLength(src));
+}
+/*
+ */
+bool BCDIsZero(const BCD* src){
+    if (src){
+        const int bcd_len = BCDLength(src);
+        if (bcd_len){
+
+            BCDDigit *sp;
+            unsigned int sx;
+
+            for (sx = 0; sx < bcd_len; sx++){
+
+                sp = &(src->list[sx]);
+
+                if (0 != sp->bin){
+
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
 }
 /*
  */
@@ -271,7 +314,9 @@ unsigned int BCDSetFloat(BCD* dst, float value){
     else
         return 1;
 }
-char* BCDToString(const BCD* src, const BCDFormatSign sign, const unsigned int precision){
+char* BCDToString(const BCD* src, const BCDFormatSign signFormat, const unsigned int precision, 
+                  const BCDFormatSignal signalFormat, const float signalValue)
+{
     if (src && BCDLength(src)){
 
         const unsigned int string_len = BCDStringLen(src);
@@ -279,6 +324,21 @@ char* BCDToString(const BCD* src, const BCDFormatSign sign, const unsigned int p
         char* string = malloc(string_len);
         if (string){
             memset(string,0,string_len);
+
+            /*
+             * Signal floor
+             */
+            BCD* signalFloor;
+
+            if (BCDFormatSignalFloor == signalFormat){
+
+                signalFloor = BCDCreateFrom(src);
+
+                BCDSetFloat(signalFloor,signalValue);
+            }
+            else {
+                signalFloor = NULL;
+            }
             
             unsigned int stringx = 0;
 
@@ -288,7 +348,7 @@ char* BCDToString(const BCD* src, const BCDFormatSign sign, const unsigned int p
             /*
              * Copy sign part
              */
-            switch(sign){
+            switch(signFormat){
 
             case BCDFormatSignOpt:
                 if (src->sign){
@@ -307,8 +367,9 @@ char* BCDToString(const BCD* src, const BCDFormatSign sign, const unsigned int p
                 break;
             }
 
-            BCDDigit *sp;
+            BCDDigit *sp, *ss;
             unsigned int sx;
+            bool aboveSignalFloor = true;
 
             /*
              * Copy integer part
@@ -317,7 +378,11 @@ char* BCDToString(const BCD* src, const BCDFormatSign sign, const unsigned int p
 
                 sp = &(src->list[sx]);
 
+
                 if (0 == sp->bin){
+                    /*
+                     * Skip leading zeros in integer string
+                     */
                     if (significand){
                         sigdigits += 1;
                         string[stringx++] = '0';
@@ -326,24 +391,41 @@ char* BCDToString(const BCD* src, const BCDFormatSign sign, const unsigned int p
                 else {
                     significand = true;
 
-                    if (0 == precision || sigdigits < precision){
+                    if (aboveSignalFloor && (0 == precision || sigdigits < precision)){
 
                         string[stringx++] = '0'+(sp->bin);
 
                         sigdigits += 1;
+
                     }
                     else {
                         string[stringx++] = '0';
                     }
                 }
+
+                /*
+                 * Check signal floor constraint 
+                 */
+                if (aboveSignalFloor && signalFloor){
+
+                    ss = &(signalFloor->list[sx]);
+
+                    if (0 != ss->bin){
+
+                        aboveSignalFloor = false;
+                    }
+                }
             }
 
-            if (0 == precision || sigdigits < precision){
-                /*
-                 * Copy fraction part
-                 */
-                sx = BCDFraction(src);
+            /*
+             * Copy fraction part
+             */
+            if (aboveSignalFloor && (0 == precision || sigdigits < precision)){
 
+                sx = BCDFraction(src);
+                /*
+                 * Representation prefix
+                 */
                 if (BCDFractionValid(src,sx)){
 
                     if (!significand){
@@ -354,7 +436,7 @@ char* BCDToString(const BCD* src, const BCDFormatSign sign, const unsigned int p
                     string[stringx++] = '.';
                 }
 
-                for (; BCDFractionValid(src,sx) && (0 == precision || sigdigits < precision); sx++){
+                for (; BCDFractionValid(src,sx) && aboveSignalFloor && (0 == precision || sigdigits < precision); sx++){
 
                     sp = &(src->list[sx]);
 
@@ -374,11 +456,49 @@ char* BCDToString(const BCD* src, const BCDFormatSign sign, const unsigned int p
 
                         sigdigits += 1;
                     }
+
+                    /*
+                     * Check signal floor constraint 
+                     */
+                    if (aboveSignalFloor && signalFloor){
+
+                        ss = &(signalFloor->list[sx]);
+
+                        if (0 != ss->bin){
+
+                            aboveSignalFloor = false;
+                        }
+                    }
                 }
             }
 
             /*
+             * Truncate zero to representation of precision (in zero)
              */
+            if (!significand){
+
+                if (0 < precision){
+                    if (2 < precision){
+                        string[0] = '0';
+                        string[1] = '.';
+                        for (sx = 2; sx < precision; sx++){
+                            string[sx] = '0';
+                        }
+                        string[3] = 0;
+                    }
+                    else {
+                        string[0] = '0';
+                        string[1] = 0;
+                    }
+                }
+                else {
+                    string[0] = '0';
+                    string[1] = 0;
+                }
+            }
+
+            BCDDestroy(signalFloor);
+
             return string;
         }
     }

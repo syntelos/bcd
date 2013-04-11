@@ -27,7 +27,7 @@ int test_int(int value){
     if (dst){
         if (0 == BCDSetWord(dst,value)){
 
-            char* string = BCDToString(dst,BCDFormatSignOpt,3);
+            char* string = BCDToString(dst,BCDFormatSignOpt,3,BCDFormatSignalAny,0.0);
             if (string){
                 printf("%d -> %s\n",value,string);
 
@@ -54,7 +54,9 @@ int test_float(float value){
 
         if (0 == BCDSetFloat(dst,value)){
 
-            char* string = BCDToString(dst,BCDFormatSignOpt,3);
+            BCDDebugPrint(stderr,dst);
+
+            char* string = BCDToString(dst,BCDFormatSignOpt,3,BCDFormatSignalFloor,0.001);
             if (string){
                 printf("%f -> %s\n",value,string);
 
@@ -78,5 +80,5 @@ int test_float(float value){
 int main(int argc, char** argv){
 
 
-    return test_float(0.010199);
+    return test_float(0.121);
 }

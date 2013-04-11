@@ -123,11 +123,28 @@ typedef struct {
  * Create a BCD having "integer" and "fraction" number of base ten digits 
  */
 BCD* BCDCreate(unsigned char integer, unsigned char fraction);
-
+/*
+ * Create a BCD having "integer" and "fraction" number of digits
+ * copied from 'src'
+ */
+BCD* BCDCreateFrom(const BCD* src);
 /*
  * Free all memory held via pointer
  */
 void BCDDestroy(BCD* bcd);
+/*
+ * Return true for non-null and not-empty data structure (may have
+ * value zero)
+ */
+bool BCDIsOpen(const BCD* src);
+/*
+ * Return true for null or empty data structure
+ */
+bool BCDIsClosed(const BCD* src);
+/*
+ * Return true for zero valued number, or a closed data structure.
+ */
+bool BCDIsZero(const BCD* src);
 /*
  * Copy 'src' to 'dst', first clearing 'dst', and then ignoring sizing
  * differences.  
@@ -184,16 +201,37 @@ typedef enum {
 
 } BCDFormatSign;
 
-/*
- *
- */
-void BCDDebugPrint(FILE* out, const BCD* src);
+typedef enum {
+    /*
+     * Ignore signal floor value
+     */
+    BCDFormatSignalAny,
+    /*
+     * Represent values on or above the floor value
+     */
+    BCDFormatSignalFloor
+
+} BCDFormatSignal;
 
 /*
  * Allocate and populate a character array representing the BCD number.
  * 
  * Return NULL on failure, otherwise a newly malloc'ed string buffer.
+ * 
+ * This "precision" is related to representational accuracy, and this
+ * "signal" is an expression of representational precision.  Need to
+ * review what's going on in the broader context between signal
+ * processing and representation.  For the moment this is useful, but
+ * it might be more hackery than it should be.
  */
-char* BCDToString(const BCD* src, const BCDFormatSign sign, const unsigned int precision);
+char* BCDToString(const BCD* src, 
+                  const BCDFormatSign signFormat, 
+                  const unsigned int precision, 
+                  const BCDFormatSignal signalFormat, const float signalValue);
+
+/*
+ * Print data structure numeric (not changes) content to output
+ */
+void BCDDebugPrint(FILE* out, const BCD* src);
 
 #endif
