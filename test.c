@@ -9,9 +9,9 @@
 
 int test_copy(){
 
-    BCD* src = BCDCreateWord();
+    BCD* src = BCDCreate(9,7);
 
-    BCD* dst = BCDCreateWord();
+    BCD* dst = BCDCreate(9,7);
 
     unsigned int rc = BCDCopy(dst,src);
 
@@ -21,9 +21,62 @@ int test_copy(){
 
     return rc;
 }
+int test_int(int value){
+
+    BCD* dst = BCDCreate(9,0);
+    if (dst){
+        if (0 == BCDSetWord(dst,value)){
+
+            char* string = BCDToString(dst,BCDFormatSignOpt,3);
+            if (string){
+                printf("%d -> %s\n",value,string);
+
+                free(string);
+                BCDDestroy(dst);
+                return 0;
+                
+            }
+            BCDDestroy(dst);
+            return 1;
+        }
+        else {
+            BCDDestroy(dst);
+            return 1;
+        }
+    }
+    else
+        return 1;
+}
+int test_float(float value){
+
+    BCD* dst = BCDCreate(9,9);
+    if (dst){
+
+        if (0 == BCDSetFloat(dst,value)){
+
+            char* string = BCDToString(dst,BCDFormatSignOpt,3);
+            if (string){
+                printf("%f -> %s\n",value,string);
+
+                free(string);
+                BCDDestroy(dst);
+                return 0;
+                
+            }
+            BCDDestroy(dst);
+            return 1;
+        }
+        else {
+            BCDDestroy(dst);
+            return 1;
+        }
+    }
+    else
+        return 1;
+}
 
 int main(int argc, char** argv){
 
 
-    return test_copy();
+    return test_float(0.010199);
 }

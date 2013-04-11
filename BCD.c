@@ -23,9 +23,19 @@
 #define _BCD_C
 
 #include <math.h>
+#include <float.h>
 
 #include "BCD.h"
 
+#define BCD_EPS (FLT_EPSILON*2.0)
+
+#define BCD_EEQ(a,b)  (fabsf(a - b) < BCD_EPS)
+
+#define BCD_ENE(a,b)  (fabsf(a - b) > BCD_EPS)
+
+#define BCD_EGT(a,b)  ((a - b) > BCD_EPS)
+
+#define BCD_ELT(a,b)  ((b - a) > BCD_EPS)
 
 /*
  */
@@ -33,16 +43,6 @@ BCD* BCDCreate(unsigned char integer, unsigned char fraction){
     BCD* bcd = malloc(sizeof(BCD));
     BCDOpen(bcd,integer,fraction);
     return bcd;
-}
-/*
- */
-BCD* BCDCreateWord(){
-    return BCDCreate(BCD_LEN_WORD,0);
-}
-/*
- */
-BCD* BCDCreateLong(){
-    return BCDCreate(BCD_LEN_LONG,0);
 }
 /*
  */
@@ -55,9 +55,7 @@ void BCDDestroy(BCD* bcd){
 /*
  */
 unsigned int BCDCopy(BCD* dst, BCD* src){
-    if (src && dst && 
-        src->integer <= dst->integer && 
-        src->fraction <= dst->fraction)
+    if (src && dst && BCDLength(src) && BCDLength(dst))
     {
         BCDClear(dst);
 
@@ -76,6 +74,7 @@ unsigned int BCDCopy(BCD* dst, BCD* src){
             dp = &(dst->list[dx]);
 
             dp->bin = sp->bin;
+            dp->changes = sp->changes;
         }
 
         /*
@@ -90,6 +89,7 @@ unsigned int BCDCopy(BCD* dst, BCD* src){
             dp = &(dst->list[dx]);
 
             dp->bin = sp->bin;
+            dp->changes = sp->changes;
         }
         return 0;
     }
@@ -99,10 +99,316 @@ unsigned int BCDCopy(BCD* dst, BCD* src){
 /*
  */
 unsigned int BCDSetWord(BCD* dst, int value){
+    if (dst && BCDLength(dst)){
 
+        dst->sign = (0 > value);
+        float v = (float)abs(value), r;
+        unsigned int ix = BCDInteger(dst);
+        unsigned int fx = BCDFraction(dst);
+        unsigned int dx;
+        unsigned char bin, changes;
+        BCDDigit *dp;
+
+        /*
+         * Update the integer part
+         */
+        for (dx = ix; BCDIntegerValid(dst,dx); dx--){
+
+            dp = &(dst->list[dx]);
+
+            changes = ((dp->changes)<<1);
+
+            r = fmodf(v,10);
+            if (r == r){
+
+                if (BCD_EEQ(0.0,r)){
+
+                    bin = 0;
+                }
+                else {
+
+                    bin = (unsigned char)r;
+                }
+
+                if (bin != dp->bin){
+
+                    changes ^= 1;
+                }
+                dp->bin = bin;
+                dp->changes = changes;
+
+                v /= 10;
+                if (BCD_EGT(1.0,v)){
+
+                    break;
+                }
+            }
+            else
+                break;
+        }
+
+        /*
+         * Update the fraction part
+         */
+        for (dx = fx; BCDFractionValid(dst,dx); dx++){
+
+            dp = &(dst->list[dx]);
+
+            changes = ((dp->changes)<<1);
+
+            if (0 != dp->bin){
+
+                changes ^= 1;
+            }
+            dp->bin = 0;
+            dp->changes = changes;
+        }
+
+        return 0;
+    }
+    else
+        return 1;
 }
 /*
  */
-unsigned int BCDSetLong(BCD* dst, long value){
+unsigned int BCDSetFloat(BCD* dst, float value){
+    if (dst && BCDLength(dst) && value == value){
 
+        dst->sign = (0 > value);
+        double v = fabs(value), r;
+        unsigned int ix = BCDInteger(dst);
+        unsigned int fx = BCDFraction(dst);
+        unsigned int dx;
+        unsigned char bin, changes;
+        BCDDigit *dp;
+
+        /*
+         * Update the integer part
+         */
+        for (dx = ix; BCDIntegerValid(dst,dx); dx--){
+
+            dp = &(dst->list[dx]);
+
+            changes = ((dp->changes)<<1);
+
+            r = fmodf(v,10);
+            if (r == r){
+
+                if (BCD_EEQ(0.0,r)){
+
+                    bin = 0;
+                }
+                else {
+
+                    bin = (unsigned char)r;
+                }
+
+                if (bin != dp->bin){
+
+                    changes ^= 1;
+                }
+                dp->bin = bin;
+                dp->changes = changes;
+
+                v -= bin;
+
+                if (BCD_EGT(1.0,v)){
+
+                    break;
+                }
+                else
+                    v /= 10;
+            }
+            else {
+                return 1;
+            }
+        }
+
+        /*
+         * Update the fraction part
+         */
+        for (dx = fx; BCDFractionValid(dst,dx); dx++){
+
+            dp = &(dst->list[dx]);
+
+            changes = ((dp->changes)<<1);
+
+            v *= 10;
+
+            r = fmod(v,10);
+            if (r == r){
+
+                if (BCD_EEQ(0.0,r)){
+
+                    bin = 0;
+                }
+                else {
+
+                    bin = (unsigned char)r;
+                }
+
+                if (bin != dp->bin){
+
+                    changes ^= 1;
+                }
+                dp->bin = bin;
+                dp->changes = changes;
+
+                v -= bin;
+            }
+            else {
+                if (0 != dp->bin){
+
+                    changes ^= 1;
+                }
+                dp->bin = 0;
+                dp->changes = changes;
+            }
+        }
+
+        return 0;
+    }
+    else
+        return 1;
+}
+char* BCDToString(const BCD* src, const BCDFormatSign sign, const unsigned int precision){
+    if (src && BCDLength(src)){
+
+        const unsigned int string_len = BCDStringLen(src);
+
+        char* string = malloc(string_len);
+        if (string){
+            memset(string,0,string_len);
+            
+            unsigned int stringx = 0;
+
+            bool significand = false;
+            unsigned int sigdigits = 0;
+
+            /*
+             * Copy sign part
+             */
+            switch(sign){
+
+            case BCDFormatSignOpt:
+                if (src->sign){
+                    string[stringx++] = '-';
+                }
+                break;
+            case BCDFormatSignReq:
+                if (src->sign){
+                    string[stringx++] = '-';
+                }
+                else {
+                    string[stringx++] = '+';
+                }
+                break;
+            default:
+                break;
+            }
+
+            BCDDigit *sp;
+            unsigned int sx;
+
+            /*
+             * Copy integer part
+             */
+            for (sx = 0; BCDIntegerValid(src,sx); sx++){
+
+                sp = &(src->list[sx]);
+
+                if (0 == sp->bin){
+                    if (significand){
+                        sigdigits += 1;
+                        string[stringx++] = '0';
+                    }
+                }
+                else {
+                    significand = true;
+
+                    if (0 == precision || sigdigits < precision){
+
+                        string[stringx++] = '0'+(sp->bin);
+
+                        sigdigits += 1;
+                    }
+                    else {
+                        string[stringx++] = '0';
+                    }
+                }
+            }
+
+            if (0 == precision || sigdigits < precision){
+                /*
+                 * Copy fraction part
+                 */
+                sx = BCDFraction(src);
+
+                if (BCDFractionValid(src,sx)){
+
+                    if (!significand){
+
+                        string[stringx++] = '0';
+                    }
+
+                    string[stringx++] = '.';
+                }
+
+                for (; BCDFractionValid(src,sx) && (0 == precision || sigdigits < precision); sx++){
+
+                    sp = &(src->list[sx]);
+
+                    if (0 == sp->bin){
+
+                        string[stringx++] = '0';
+
+                        if (significand){
+
+                            sigdigits += 1;
+                        }
+                    }
+                    else {
+                        significand = true;
+
+                        string[stringx++] = '0'+(sp->bin);
+
+                        sigdigits += 1;
+                    }
+                }
+            }
+
+            /*
+             */
+            return string;
+        }
+    }
+    return NULL;
+}
+void BCDDebugPrint(FILE* out, const BCD* src){
+    if (out && src){
+        const int bcd_len = BCDLength(src);
+        if (bcd_len){
+
+            fprintf(out,"[%s] sign %c\n","si",(src->sign)?('-'):('+'));
+
+            BCDDigit *sp;
+            unsigned int sx;
+
+            for (sx = 0; sx < bcd_len; sx++){
+
+                if (BCDIntegerValid(src,sx)){
+
+                    sp = &(src->list[sx]);
+
+                    fprintf(out,"[%02d] intg %d\n",sx,sp->bin);
+                }
+                else if (BCDFractionValid(src,sx)){
+
+                    sp = &(src->list[sx]);
+
+                    fprintf(out,"[%02d] frac %d\n",sx,sp->bin);
+                }
+            }
+        }
+    }
 }

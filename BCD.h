@@ -25,6 +25,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 
 /*
@@ -32,6 +33,8 @@
  * - shifted on each update to the BCD (number).  The least
  * significant bit of the change register is set to one when this
  * digit changes value.
+ * 
+ * Note that sign changes are not recorded.
  */
 typedef struct {
     /*
@@ -60,6 +63,10 @@ typedef struct {
  */
 typedef struct {
     /*
+     * True when the number is negative
+     */
+    bool sign;
+    /*
      * Number of digits allocated to integer part of BCD number
      */
     unsigned char integer;
@@ -67,15 +74,23 @@ typedef struct {
      * Number of digits allocated to fraction part of BCD number
      */
     unsigned char fraction;
-
+    /*
+     * List of digits including integer and fraction subsets in a
+     * fixed point layout.
+     */
     BCDDigit* list;
 
 } BCD;
 
 #define BCDLength(bp) ((bp)->integer+(bp)->fraction)
+/*
+ * BCD length plus three for sign, decimal point, and string
+ * terminator.
+ */
+#define BCDStringLen(bp) (BCDLength(bp)+3)
 
-#define BCDClear(bp)                            \
-    memset( (bp)->list,0,BCDLength(bp));
+#define BCDClear(bp)                                        \
+    memset( (bp)->list,0,(sizeof(BCDDigit)*BCDLength(bp)));
 
 #define BCDOpen(bp,ii,ff)                           \
     (bp)->integer = ii;                             \
@@ -102,32 +117,83 @@ typedef struct {
 /*
  * Boolean test of index for fraction digit
  */
-#define BCDFractionValid(bp,ix) ((BCDFraction(bp) <= (ix))&&((ix) <= BCDLength(bp)))
+#define BCDFractionValid(bp,ix) ((BCDFraction(bp) <= (ix))&&((ix) < BCDLength(bp)))
 
-#ifdef _BCD_C
-
-const unsigned char BCD_LEN_WORD = (unsigned char)log10f(powf(2,(8*sizeof(int))-1));
-
-const unsigned char BCD_LEN_LONG = (unsigned char)log10f(powf(2,(8*sizeof(long))-1));
-
-#else
-extern const unsigned char BCD_LEN_WORD;
-
-extern const unsigned char BCD_LEN_LONG;
-#endif
-
+/*
+ * Create a BCD having "integer" and "fraction" number of base ten digits 
+ */
 BCD* BCDCreate(unsigned char integer, unsigned char fraction);
 
-BCD* BCDCreateWord();
-
-BCD* BCDCreateLong();
-
+/*
+ * Free all memory held via pointer
+ */
 void BCDDestroy(BCD* bcd);
-
+/*
+ * Copy 'src' to 'dst', first clearing 'dst', and then ignoring sizing
+ * differences.  
+ * 
+ * This function safely performs the requested copy operation for
+ * accessible digits and changes.  Each part of the number is copied
+ * for digits that exist in both 'src' and 'dst'.
+ * 
+ * Because the 'dst' is first cleared, this operation will be
+ * consistent subject to the sizes of 'src' and 'dst'.
+ * 
+ * Return zero on success and one on failure.  For failure cases,
+ * refer to the source.
+ */
 unsigned int BCDCopy(BCD* dst, BCD* src);
-
+/*
+ * Update digits and their change registers from a signed integer
+ * value.  
+ * 
+ * Accepts any arguments.  A valid "BCD dst" has been correctly
+ * allocated and initialized for any integer and fraction lengths.  A
+ * valid "int value"
+ * 
+ * Return zero on success and one on failure.  For failure cases,
+ * refer to the source.
+ */
 unsigned int BCDSetWord(BCD* dst, int value);
+/*
+ * Update digits and their change registers from a floating point
+ * value.
+ * 
+ * Accepts any arguments.  A valid "BCD dst" has been correctly
+ * allocated and initialized for any integer and fraction lengths.  A
+ * valid "float value" is not a NaN or infinity (value == value).
+ * 
+ * Return zero on success and one on failure.  For failure cases,
+ * refer to the source.
+ */
+unsigned int BCDSetFloat(BCD* dst, float value);
 
-unsigned int BCDSetLong(BCD* dst, long value);
+typedef enum {
+    /*
+     * No sign (absolute value)
+     */
+    BCDFormatSignNone,
+    /*
+     * Optional minus sign
+     */
+    BCDFormatSignOpt, 
+    /*
+     * Require sign: one of plus or minus
+     */
+    BCDFormatSignReq
+
+} BCDFormatSign;
+
+/*
+ *
+ */
+void BCDDebugPrint(FILE* out, const BCD* src);
+
+/*
+ * Allocate and populate a character array representing the BCD number.
+ * 
+ * Return NULL on failure, otherwise a newly malloc'ed string buffer.
+ */
+char* BCDToString(const BCD* src, const BCDFormatSign sign, const unsigned int precision);
 
 #endif
