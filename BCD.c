@@ -161,17 +161,42 @@ unsigned int BCDSetWord(BCD* dst, int value){
 
             changes = ((dp->changes)<<1);
 
-            r = fmodf(v,10);
-            if (r == r){
+            if (BCD_ELT(1.0,v)){
 
-                if (BCD_EEQ(0.0,r)){
+                r = fmodf(v,10);
+                if (r == r){
 
-                    bin = 0;
+                    if (BCD_EEQ(0.0,r)){
+
+                        bin = 0;
+                    }
+                    else {
+
+                        bin = (unsigned char)r;
+                    }
+
+                    if (bin != dp->bin){
+
+                        changes ^= 1;
+                    }
+                    dp->bin = bin;
+                    dp->changes = changes;
+
+                    v /= 10;
                 }
                 else {
+                    bin = 0;
 
-                    bin = (unsigned char)r;
+                    if (bin != dp->bin){
+
+                        changes ^= 1;
+                    }
+                    dp->bin = bin;
+                    dp->changes = changes;
                 }
+            }
+            else {
+                bin = 0;
 
                 if (bin != dp->bin){
 
@@ -179,19 +204,11 @@ unsigned int BCDSetWord(BCD* dst, int value){
                 }
                 dp->bin = bin;
                 dp->changes = changes;
-
-                v /= 10;
-                if (BCD_EGT(1.0,v)){
-
-                    break;
-                }
             }
-            else
-                break;
         }
 
         /*
-         * Update the fraction part
+         * Clear any fraction part
          */
         for (dx = fx; BCDFractionValid(dst,dx); dx++){
 
@@ -234,17 +251,44 @@ unsigned int BCDSetFloat(BCD* dst, float value){
 
             changes = ((dp->changes)<<1);
 
-            r = fmodf(v,10);
-            if (r == r){
+            if (BCD_ELT(1.0,v)){
 
-                if (BCD_EEQ(0.0,r)){
+                r = fmodf(v,10);
+                if (r == r){
 
-                    bin = 0;
+                    if (BCD_EEQ(0.0,r)){
+
+                        bin = 0;
+                    }
+                    else {
+
+                        bin = (unsigned char)r;
+                    }
+
+                    if (bin != dp->bin){
+
+                        changes ^= 1;
+                    }
+                    dp->bin = bin;
+                    dp->changes = changes;
+
+                    v -= bin;
+
+                    v /= 10;
                 }
                 else {
+                    bin = 0;
 
-                    bin = (unsigned char)r;
+                    if (bin != dp->bin){
+
+                        changes ^= 1;
+                    }
+                    dp->bin = bin;
+                    dp->changes = changes;
                 }
+            }
+            else {
+                bin = 0;
 
                 if (bin != dp->bin){
 
@@ -252,18 +296,6 @@ unsigned int BCDSetFloat(BCD* dst, float value){
                 }
                 dp->bin = bin;
                 dp->changes = changes;
-
-                v -= bin;
-
-                if (BCD_EGT(1.0,v)){
-
-                    break;
-                }
-                else
-                    v /= 10;
-            }
-            else {
-                return 1;
             }
         }
 
@@ -276,28 +308,38 @@ unsigned int BCDSetFloat(BCD* dst, float value){
 
             changes = ((dp->changes)<<1);
 
-            v *= 10;
+            if (BCD_ENE(0.0,v)){
+                v *= 10;
 
-            r = fmod(v,10);
-            if (r == r){
+                r = fmod(v,10);
+                if (r == r){
 
-                if (BCD_EEQ(0.0,r)){
+                    if (BCD_EEQ(0.0,r)){
 
-                    bin = 0;
+                        bin = 0;
+                    }
+                    else {
+
+                        bin = (unsigned char)r;
+                    }
+
+                    if (bin != dp->bin){
+
+                        changes ^= 1;
+                    }
+                    dp->bin = bin;
+                    dp->changes = changes;
+
+                    v -= bin;
                 }
                 else {
+                    if (0 != dp->bin){
 
-                    bin = (unsigned char)r;
+                        changes ^= 1;
+                    }
+                    dp->bin = 0;
+                    dp->changes = changes;
                 }
-
-                if (bin != dp->bin){
-
-                    changes ^= 1;
-                }
-                dp->bin = bin;
-                dp->changes = changes;
-
-                v -= bin;
             }
             else {
                 if (0 != dp->bin){
