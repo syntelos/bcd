@@ -62,7 +62,7 @@ bool test(float vectorInValue,
 
 int main(int argc, char** argv){
 
-    FILE* fin = fopen("test.in","ro");
+    FILE* fin = fopen("test.in","r");
     if (fin){
         int rc;
         /*
