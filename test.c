@@ -8,13 +8,15 @@
 #include "BCD.h"
 
 
+
 bool test(float vectorInValue,
           BCDFormatSign vectorInFormatSign,
           unsigned int vectorInPrecision,
-          BCDFormatSignal vectorInFormatSignal,
-          float vectorInSignal,
+          float vectorInAccuracy,
           char* vectorOut)
 {
+    fprintf(stderr,"\ntest input value: %f, sign: %d, prec: %d, acc: %f\n",vectorInValue,vectorInFormatSign,vectorInPrecision,vectorInAccuracy);
+
     BCD* dst = BCDCreate(9,9);
     if (dst){
 
@@ -22,7 +24,10 @@ bool test(float vectorInValue,
 
             BCDDebugPrint(stderr,dst);
 
-            char* string = BCDToString(dst,vectorInFormatSignal,vectorInPrecision,vectorInFormatSignal,vectorInSignal);
+            char* string = BCDToString(dst,
+                                       vectorInFormatSign,
+                                       vectorInPrecision,
+                                       vectorInAccuracy);
             if (string){
 
                 if (0 == strcmp(string,vectorOut)){
@@ -73,20 +78,20 @@ int main(int argc, char** argv){
         float vectorInValue; 
         BCDFormatSign vectorInFormatSign; 
         unsigned int vectorInPrecision; 
-        BCDFormatSignal vectorInFormatSignal;
-        float vectorInSignal;
+        float vectorInAccuracy;
         char vectorOut[128];
         /*
          * Process test vectors 
          */
         unsigned int vector = 0, success = 0, failure = 0;
 
-        while (EOF != (rc = fscanf(fin,"%f %u %u %u %f %128s\n",&vectorInValue,&vectorInFormatSign,&vectorInPrecision,&vectorInFormatSignal,&vectorInSignal,vectorOut))){
-            if (6 == rc){
+        while (EOF != (rc = fscanf(fin,"%f %u %u %f %128s\n",&vectorInValue,&vectorInFormatSign,&vectorInPrecision,&vectorInAccuracy,vectorOut))){
+            if (5 == rc){
                 vector += 1;
                 if (test(vectorInValue,
-                         vectorInFormatSign,vectorInPrecision,
-                         vectorInFormatSignal,vectorInSignal,
+                         vectorInFormatSign,
+                         vectorInPrecision,
+                         vectorInAccuracy,
                          vectorOut))
                 {
                     success += 1;

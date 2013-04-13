@@ -25,7 +25,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdbool.h>
+#include <limits.h>
 #include <string.h>
 
 /*
@@ -161,18 +163,6 @@ bool BCDIsZero(const BCD* src);
  */
 unsigned int BCDCopy(BCD* dst, BCD* src);
 /*
- * Update digits and their change registers from a signed integer
- * value.  
- * 
- * Accepts any arguments.  A valid "BCD dst" has been correctly
- * allocated and initialized for any integer and fraction lengths.  A
- * valid "int value"
- * 
- * Return zero on success and one on failure.  For failure cases,
- * refer to the source.
- */
-unsigned int BCDSetWord(BCD* dst, int value);
-/*
  * Update digits and their change registers from a floating point
  * value.
  * 
@@ -201,33 +191,18 @@ typedef enum {
 
 } BCDFormatSign;
 
-typedef enum {
-    /*
-     * Ignore signal floor value
-     */
-    BCDFormatSignalAny,
-    /*
-     * Represent values on or above the floor value
-     */
-    BCDFormatSignalFloor
-
-} BCDFormatSignal;
+#define BCDFormatSignString(e) (BCDFormatSignNone == (e))?("none"):((BCDFormatSignOpt == (e))?("opt"):("req"))))
 
 /*
  * Allocate and populate a character array representing the BCD number.
  * 
  * Return NULL on failure, otherwise a newly malloc'ed string buffer.
  * 
- * This "precision" is related to representational accuracy, and this
- * "signal" is an expression of representational precision.  Need to
- * review what's going on in the broader context between signal
- * processing and representation.  For the moment this is useful, but
- * it might be more hackery than it should be.
  */
 char* BCDToString(const BCD* src, 
                   const BCDFormatSign signFormat, 
                   const unsigned int precision, 
-                  const BCDFormatSignal signalFormat, const float signalValue);
+                  const float accuracy);
 
 /*
  * Print data structure numeric (not changes) content to output

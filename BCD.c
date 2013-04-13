@@ -37,6 +37,34 @@
 
 #define BCD_ELT(a,b)  ((b - a) > BCD_EPS)
 
+static const float floatdec[256] = {
+    1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 10000000000, 
+    10000000000, 10000000000, 10000000000
+};
+
+
 /*
  */
 BCD* BCDCreate(unsigned char integer, unsigned char fraction){
@@ -141,103 +169,25 @@ unsigned int BCDCopy(BCD* dst, BCD* src){
 }
 /*
  */
-unsigned int BCDSetWord(BCD* dst, int value){
-    if (dst && BCDLength(dst)){
-
-        dst->sign = (0 > value);
-        float v = (float)abs(value), r;
-        unsigned int ix = BCDInteger(dst);
-        unsigned int fx = BCDFraction(dst);
-        unsigned int dx;
-        unsigned char bin, changes;
-        BCDDigit *dp;
-
-        /*
-         * Update the integer part
-         */
-        for (dx = ix; BCDIntegerValid(dst,dx); dx--){
-
-            dp = &(dst->list[dx]);
-
-            changes = ((dp->changes)<<1);
-
-            if (BCD_ELT(1.0,v)){
-
-                r = fmodf(v,10);
-                if (r == r){
-
-                    if (BCD_EEQ(0.0,r)){
-
-                        bin = 0;
-                    }
-                    else {
-
-                        bin = (unsigned char)r;
-                    }
-
-                    if (bin != dp->bin){
-
-                        changes ^= 1;
-                    }
-                    dp->bin = bin;
-                    dp->changes = changes;
-
-                    v /= 10;
-                }
-                else {
-                    bin = 0;
-
-                    if (bin != dp->bin){
-
-                        changes ^= 1;
-                    }
-                    dp->bin = bin;
-                    dp->changes = changes;
-                }
-            }
-            else {
-                bin = 0;
-
-                if (bin != dp->bin){
-
-                    changes ^= 1;
-                }
-                dp->bin = bin;
-                dp->changes = changes;
-            }
-        }
-
-        /*
-         * Clear any fraction part
-         */
-        for (dx = fx; BCDFractionValid(dst,dx); dx++){
-
-            dp = &(dst->list[dx]);
-
-            changes = ((dp->changes)<<1);
-
-            if (0 != dp->bin){
-
-                changes ^= 1;
-            }
-            dp->bin = 0;
-            dp->changes = changes;
-        }
-
-        return 0;
-    }
-    else
-        return 1;
-}
-/*
- */
 unsigned int BCDSetFloat(BCD* dst, float value){
     if (dst && BCDLength(dst) && value == value){
 
         dst->sign = (0 > value);
-        double v = fabs(value), r;
+
+        float valueAbs = fabsf(value);
+
+        uint32_t fixed_integer = (uint32_t)valueAbs;
+
+        float float_fraction = (valueAbs-fixed_integer);
+
+        uint32_t fixed_fraction = (uint32_t)(float_fraction*floatdec[dst->fraction]);
+
+        uint32_t r;
+
+        printf("BCDSetFloat(val: %f, int: %d, frac: %d)\n",valueAbs,fixed_integer,fixed_fraction);
+
         unsigned int ix = BCDInteger(dst);
-        unsigned int fx = BCDFraction(dst);
+        unsigned int fx = BCDLength(dst)-1;
         unsigned int dx;
         unsigned char bin, changes;
         BCDDigit *dp;
@@ -251,104 +201,41 @@ unsigned int BCDSetFloat(BCD* dst, float value){
 
             changes = ((dp->changes)<<1);
 
-            if (BCD_ELT(1.0,v)){
+            r = fixed_integer % 10;
 
-                r = fmodf(v,10);
-                if (r == r){
+            bin = (unsigned char)r;
 
-                    if (BCD_EEQ(0.0,r)){
+            if (bin != dp->bin){
 
-                        bin = 0;
-                    }
-                    else {
-
-                        bin = (unsigned char)r;
-                    }
-
-                    if (bin != dp->bin){
-
-                        changes ^= 1;
-                    }
-                    dp->bin = bin;
-                    dp->changes = changes;
-
-                    v -= bin;
-
-                    v /= 10;
-                }
-                else {
-                    bin = 0;
-
-                    if (bin != dp->bin){
-
-                        changes ^= 1;
-                    }
-                    dp->bin = bin;
-                    dp->changes = changes;
-                }
+                changes ^= 1;
             }
-            else {
-                bin = 0;
+            dp->bin = bin;
+            dp->changes = changes;
 
-                if (bin != dp->bin){
-
-                    changes ^= 1;
-                }
-                dp->bin = bin;
-                dp->changes = changes;
-            }
+            fixed_integer /= 10;
         }
 
         /*
          * Update the fraction part
          */
-        for (dx = fx; BCDFractionValid(dst,dx); dx++){
+        for (dx = fx; BCDFractionValid(dst,dx); dx--){
 
             dp = &(dst->list[dx]);
 
             changes = ((dp->changes)<<1);
 
-            if (BCD_ENE(0.0,v)){
-                v *= 10;
+            r = fixed_fraction % 10;
 
-                r = fmod(v,10);
-                if (r == r){
+            bin = (unsigned char)r;
 
-                    if (BCD_EEQ(0.0,r)){
+            if (bin != dp->bin){
 
-                        bin = 0;
-                    }
-                    else {
-
-                        bin = (unsigned char)r;
-                    }
-
-                    if (bin != dp->bin){
-
-                        changes ^= 1;
-                    }
-                    dp->bin = bin;
-                    dp->changes = changes;
-
-                    v -= bin;
-                }
-                else {
-                    if (0 != dp->bin){
-
-                        changes ^= 1;
-                    }
-                    dp->bin = 0;
-                    dp->changes = changes;
-                }
+                changes ^= 1;
             }
-            else {
-                if (0 != dp->bin){
+            dp->bin = bin;
+            dp->changes = changes;
 
-                    changes ^= 1;
-                }
-                dp->bin = 0;
-                dp->changes = changes;
-            }
+            fixed_fraction /= 10;
         }
 
         return 0;
@@ -356,8 +243,10 @@ unsigned int BCDSetFloat(BCD* dst, float value){
     else
         return 1;
 }
-char* BCDToString(const BCD* src, const BCDFormatSign signFormat, const unsigned int precision, 
-                  const BCDFormatSignal signalFormat, const float signalValue)
+char* BCDToString(const BCD* src, 
+                  const BCDFormatSign signFormat, 
+                  const unsigned int precision, 
+                  const float accuracyValue)
 {
     if (src && BCDLength(src)){
 
@@ -367,20 +256,11 @@ char* BCDToString(const BCD* src, const BCDFormatSign signFormat, const unsigned
         if (string){
             memset(string,0,string_len);
 
-            /*
-             * Signal floor
-             */
-            BCD* signalFloor;
 
-            if (BCDFormatSignalFloor == signalFormat){
+            BCD* accuracy = BCDCreateFrom(src);
 
-                signalFloor = BCDCreateFrom(src);
+            BCDSetFloat(accuracy,accuracyValue);
 
-                BCDSetFloat(signalFloor,signalValue);
-            }
-            else {
-                signalFloor = NULL;
-            }
             
             unsigned int stringx = 0;
 
@@ -411,7 +291,7 @@ char* BCDToString(const BCD* src, const BCDFormatSign signFormat, const unsigned
 
             BCDDigit *sp, *ss;
             unsigned int sx;
-            bool aboveSignalFloor = true;
+            bool withinAccuracy = true;
 
             /*
              * Copy integer part
@@ -433,7 +313,7 @@ char* BCDToString(const BCD* src, const BCDFormatSign signFormat, const unsigned
                 else {
                     significand = true;
 
-                    if (aboveSignalFloor && (0 == precision || sigdigits < precision)){
+                    if (withinAccuracy && (0 == precision || sigdigits < precision)){
 
                         string[stringx++] = '0'+(sp->bin);
 
@@ -448,13 +328,13 @@ char* BCDToString(const BCD* src, const BCDFormatSign signFormat, const unsigned
                 /*
                  * Check signal floor constraint 
                  */
-                if (aboveSignalFloor && signalFloor){
+                if (withinAccuracy){
 
-                    ss = &(signalFloor->list[sx]);
+                    ss = &(accuracy->list[sx]);
 
                     if (0 != ss->bin){
 
-                        aboveSignalFloor = false;
+                        withinAccuracy = false;
                     }
                 }
             }
@@ -462,7 +342,7 @@ char* BCDToString(const BCD* src, const BCDFormatSign signFormat, const unsigned
             /*
              * Copy fraction part
              */
-            if (aboveSignalFloor && (0 == precision || sigdigits < precision)){
+            if (withinAccuracy && (0 == precision || sigdigits < precision)){
 
                 sx = BCDFraction(src);
                 /*
@@ -478,7 +358,7 @@ char* BCDToString(const BCD* src, const BCDFormatSign signFormat, const unsigned
                     string[stringx++] = '.';
                 }
 
-                for (; BCDFractionValid(src,sx) && aboveSignalFloor && (0 == precision || sigdigits < precision); sx++){
+                for (; BCDFractionValid(src,sx) && withinAccuracy && (0 == precision || sigdigits < precision); sx++){
 
                     sp = &(src->list[sx]);
 
@@ -500,15 +380,15 @@ char* BCDToString(const BCD* src, const BCDFormatSign signFormat, const unsigned
                     }
 
                     /*
-                     * Check signal floor constraint 
+                     * Check accuracy
                      */
-                    if (aboveSignalFloor && signalFloor){
+                    if (withinAccuracy){
 
-                        ss = &(signalFloor->list[sx]);
+                        ss = &(accuracy->list[sx]);
 
                         if (0 != ss->bin){
 
-                            aboveSignalFloor = false;
+                            withinAccuracy = false;
                         }
                     }
                 }
@@ -539,7 +419,7 @@ char* BCDToString(const BCD* src, const BCDFormatSign signFormat, const unsigned
                 }
             }
 
-            BCDDestroy(signalFloor);
+            BCDDestroy(accuracy);
 
             return string;
         }

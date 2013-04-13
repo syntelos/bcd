@@ -20,6 +20,12 @@ test : $(SRCS) $(HEADERS)
 clean:
 	$(RM) *.s *.o *~ *.lst *.i test
 
+again:
+	make clean
+	make
 
-.PHONY: clean, run
+.PHONY: clean run again
+
+floatdec: floatdec.c
+	$(CC) $(CFLAGS) -o $@ floatdec.c -lm
 
