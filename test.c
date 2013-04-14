@@ -18,7 +18,7 @@ bool test(unsigned int lno,
 {
 
 
-    BCD* dst = BCDCreate(9,9);
+    BCD* dst = BCDCreate(8,8);
     if (dst){
 
         if (0 == BCDSetFloat(dst,vectorInValue)){
@@ -28,6 +28,8 @@ bool test(unsigned int lno,
                                        vectorInPrecision,
                                        vectorInAccuracy);
             if (string){
+
+                //BCDDebugPrint(stderr,dst);
 
                 if (0 == strcmp(string,vectorOut)){
 

@@ -251,6 +251,7 @@ unsigned int BCDSetFloat(BCD* dst, float value){
             dp->bin = bin;
             dp->changes = changes;
 
+            fixed_fraction -= r;
             fixed_fraction /= 10;
         }
 
