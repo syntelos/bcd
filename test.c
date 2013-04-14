@@ -9,20 +9,19 @@
 
 
 
-bool test(float vectorInValue,
+bool test(unsigned int lno,
+          float vectorInValue,
           BCDFormatSign vectorInFormatSign,
           unsigned int vectorInPrecision,
           float vectorInAccuracy,
           char* vectorOut)
 {
-    fprintf(stderr,"\ntest input value: %f, sign: %d, prec: %d, acc: %f\n",vectorInValue,vectorInFormatSign,vectorInPrecision,vectorInAccuracy);
+
 
     BCD* dst = BCDCreate(9,9);
     if (dst){
 
         if (0 == BCDSetFloat(dst,vectorInValue)){
-
-            BCDDebugPrint(stderr,dst);
 
             char* string = BCDToString(dst,
                                        vectorInFormatSign,
@@ -32,15 +31,12 @@ bool test(float vectorInValue,
 
                 if (0 == strcmp(string,vectorOut)){
 
-                    fprintf(stderr,"test success for %f -> %s\n",vectorInValue,string);
-
                     free(string);
                     BCDDestroy(dst);
                     return true;
                 }
                 else {
-
-                    fprintf(stderr,"test failure for %f -> %s\n",vectorInValue,string);
+                    fprintf(stderr,"%d\tFAILURE value: %f, sign: %d, prec: %d, acc: %f, expected: %s, result: %s\n\n",lno,vectorInValue,vectorInFormatSign,vectorInPrecision,vectorInAccuracy,vectorOut,string);
 
                     free(string);
                     BCDDestroy(dst);
@@ -65,46 +61,95 @@ bool test(float vectorInValue,
     }
 }
 
+/*
+ * Read input test vector file, "test.in".
+ */
 int main(int argc, char** argv){
 
     FILE* fin = fopen("test.in","r");
     if (fin){
-        int rc;
+
         /*
-         * Test vector file format
+         * Test Vector File Format
          * 
-         * Space separated line of
+         * Line terminal (CRLF) or (LF).
+         * Line comment starts with '#'.
+         * 
+         * Space separated line of "%f %u %u %f %s" as...
          */
         float vectorInValue; 
         BCDFormatSign vectorInFormatSign; 
         unsigned int vectorInPrecision; 
         float vectorInAccuracy;
         char vectorOut[128];
+
         /*
          * Process test vectors 
          */
-        unsigned int vector = 0, success = 0, failure = 0;
+        char linin[128];
+        bool comment = false;
+        unsigned int rc, lno = 0, vector = 0, success = 0, failure = 0;
 
-        while (EOF != (rc = fscanf(fin,"%f %u %u %f %128s\n",&vectorInValue,&vectorInFormatSign,&vectorInPrecision,&vectorInAccuracy,vectorOut))){
-            if (5 == rc){
-                vector += 1;
-                if (test(vectorInValue,
-                         vectorInFormatSign,
-                         vectorInPrecision,
-                         vectorInAccuracy,
-                         vectorOut))
-                {
-                    success += 1;
+        do {
+            /*
+             * Read test vector
+             */
+            lno += 1;
+            comment = false;
+            {
+                char ch;
+                unsigned int cc = 0;
+                memset(linin,0,128);
+                while (0 < (rc = fread(&ch,1,1,fin))){
+
+                    if ('\r' == ch)
+                        continue;
+                    else if ('\n' == ch)
+                        break;
+                    else if ('#' == ch){
+                        linin[cc++] = ch;
+                        comment = true;
+                    }
+                    else if (128 <= cc){
+
+                        fprintf(stderr,"%s: error: file 'test.in' input line #%d too long.\n",argv[0],lno);
+                        return 1;
+                    }
+                    else
+                        linin[cc++] = ch;
+                }
+            }
+            /*
+             * Evaluate test vector
+             */
+            if (*linin){
+                if (comment){
+
+                    fprintf(stderr,"%d\t%s\n",lno,linin);
                 }
                 else {
+                    fprintf(stderr,"%d\t%s\n",lno,linin);
 
-                    failure += 1;
+                    if (5 == sscanf(linin,"%f %u %u %f %128s",&vectorInValue,&vectorInFormatSign,&vectorInPrecision,&vectorInAccuracy,vectorOut)){
+
+                        if (test(lno, 
+                                 vectorInValue,
+                                 vectorInFormatSign,
+                                 vectorInPrecision,
+                                 vectorInAccuracy,
+                                 vectorOut))
+                            {
+                                success += 1;
+                            }
+                        else {
+
+                            failure += 1;
+                        }
+                    }
                 }
             }
-            else {
-                fscanf(fin,"%128s\n",vectorOut);
-            }
         }
+        while (rc);
 
         return failure;
     }

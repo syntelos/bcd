@@ -2,7 +2,9 @@
 #include <stdbool.h>
 #include <math.h>
 
-
+/*
+ * Generates "floatdec" table copied into BCD.c
+ */
 int main(int argc, char** argv){
 
     printf("static const float floatdec[256] = {\n    ");
@@ -23,13 +25,13 @@ int main(int argc, char** argv){
             (0 == fraction || 0 == fmodf(dec,10)))
         {
 
-            printf("%1.0f",dec);
+            printf("%1.1f",dec);
             ceil = dec;
         }
         else {
             bounds = false;
 
-            printf("%1.0f",ceil);
+            printf("%1.1f",ceil);
         }
 
         if (fraction < 255)
